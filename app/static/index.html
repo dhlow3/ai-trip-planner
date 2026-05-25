@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Trip Planner</title>
+  <style>
+    :root {
+      --color-bg-page:   #f4f7f8;
+      --color-bg-card:   #ffffff;
+      --color-bg-output: #f8fafc;
+      --color-border:    #d9e2ec;
+      --color-text:      #1f2933;
+      --color-text-dark: #102a43;
+      --color-text-mid:  #243b53;
+      --color-text-muted:#52606d;
+      --color-blue:      #0b69a3;
+      --color-blue-dark: #035388;
+      --color-focus-ring:rgba(38, 128, 194, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--color-bg-page);
+      color: var(--color-text);
+      line-height: 1.5;
+    }
+
+    .page {
+      width: min(92%, 720px);
+      margin: 40px auto;
+      padding: 28px;
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(31, 41, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      color: var(--color-text-dark);
+    }
+
+    .intro {
+      margin: 0 0 24px;
+      color: var(--color-text-muted);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+      color: var(--color-text-mid);
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #bcccdc;
+      border-radius: 6px;
+      font-size: 1rem;
+      color: var(--color-text-dark);
+      background: var(--color-bg-card);
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--color-blue);
+      box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+
+    button {
+      width: 100%;
+      padding: 13px 16px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--color-blue);
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--color-blue-dark);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .output {
+      margin-top: 24px;
+      padding: 18px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      background: var(--color-bg-output);
+      min-height: 120px;
+    }
+
+    .output h2 {
+      margin: 0 0 12px;
+      font-size: 1.25rem;
+      color: var(--color-text-dark);
+    }
+
+    .output h3 {
+      margin: 16px 0 6px;
+      font-size: 1rem;
+      color: var(--color-text-mid);
+    }
+
+    .output ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    .output li {
+      margin-bottom: 4px;
+    }
+
+    .placeholder {
+      color: #627d98;
+    }
+
+    .error {
+      color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>AI Trip Planner</h1>
+    <p class="intro">Enter a few trip details and generate a simple travel plan.</p>
+
+    <form id="tripForm">
+      <div class="form-group">
+        <label for="destination">Destination</label>
+        <input id="destination" type="text" placeholder="Example: Kyoto, Japan" required>
+      </div>
+
+      <div class="form-group">
+        <label for="activity">Activity</label>
+        <input id="activity" type="text" placeholder="Example: food tours, hiking, museums" required>
+      </div>
+
+      <div class="form-group">
+        <label for="season">Season</label>
+        <select id="season" required>
+          <option value="">Choose a season</option>
+          <option value="spring">Spring</option>
+          <option value="summer">Summer</option>
+          <option value="fall">Fall</option>
+          <option value="winter">Winter</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="experience">Experience Level</label>
+        <select id="experience" required>
+          <option value="">Choose a level</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submitBtn">Generate Trip</button>
+    </form>
+
+    <section class="output" id="output" aria-live="polite">
+      <p class="placeholder">Your trip plan will appear here.</p>
+    </section>
+  </main>
+
+  <script>
+    const API_URL = "/generate-trip";
+
+    const tripForm = document.getElementById("tripForm");
+    const output = document.getElementById("output");
+    const submitBtn = document.getElementById("submitBtn");
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function makeList(items) {
+      if (!items.length) {
+        return "<li>None provided.</li>";
+      }
+
+      return items.map(function (item) {
+        return `<li>${escapeHtml(item)}</li>`;
+      }).join("");
+    }
+
+    function getTripRequestFromForm() {
+      const destination = document.getElementById("destination").value.trim();
+      const activity = document.getElementById("activity").value.trim();
+      const season = document.getElementById("season").value;
+      const experience = document.getElementById("experience").value;
+
+      return {
+        destination: destination,
+        activity: activity,
+        season: season,
+        experience_level: experience
+      };
+    }
+
+    function showLoading() {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Planning...";
+      output.innerHTML = "<p class='placeholder'>Planning your trip. Please wait...</p>";
+    }
+
+    function hideLoading() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Generate Trip";
+    }
+
+    function showError(message) {
+      output.innerHTML = `<p class="error">${escapeHtml(message)}</p>`;
+    }
+
+    function showTripRecommendation(trip) {
+      const itinerary = makeList(trip.itinerary || []);
+      const packingList = makeList(trip.packing_list || []);
+      const safetyTips = makeList(trip.safety_tips || []);
+
+      output.innerHTML = `
+        <h2>Your Trip to ${escapeHtml(trip.destination)}</h2>
+        <p><strong>Activity:</strong> ${escapeHtml(trip.activity)}</p>
+        <p><strong>Season:</strong> ${escapeHtml(trip.season)}</p>
+        <p><strong>Experience level:</strong> ${escapeHtml(trip.experience_level)}</p>
+
+        <h3>Itinerary</h3>
+        <ul>${itinerary}</ul>
+
+        <h3>Packing List</h3>
+        <ul>${packingList}</ul>
+
+        <h3>Safety Tips</h3>
+        <ul>${safetyTips}</ul>
+      `;
+    }
+
+    tripForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const tripRequest = getTripRequestFromForm();
+      showLoading();
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(tripRequest)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(function () {
+            return {};
+          });
+
+          throw new Error(errorData.detail || "Could not generate a trip.");
+        }
+
+        const tripRecommendation = await response.json();
+        showTripRecommendation(tripRecommendation);
+      } catch (error) {
+        const message = error instanceof TypeError
+          ? "Could not reach the server. Check your connection and try again."
+          : error.message;
+
+        showError(message);
+      } finally {
+        hideLoading();
+      }
+    });
+  </script>
+</body>
+</html>
