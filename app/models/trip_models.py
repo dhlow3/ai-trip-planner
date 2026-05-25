@@ -17,8 +17,8 @@ class TripResponse(BaseModel):
 
     destination: str
     activity: str
-    season: str
-    experience_level: str
+    season: Literal["spring", "summer", "fall", "winter"]
+    experience_level: Literal["beginner", "intermediate", "advanced"]
     itinerary: list[str]
     packing_list: list[str]
     safety_tips: list[str]

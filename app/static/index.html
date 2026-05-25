@@ -188,11 +188,15 @@
   </main>
 
   <script>
-    const API_URL = "/generate-trip";
+    const API_URL = "/trips/generate-trip";
 
     const tripForm = document.getElementById("tripForm");
     const output = document.getElementById("output");
     const submitBtn = document.getElementById("submitBtn");
+    const destinationInput = document.getElementById("destination");
+    const activityInput = document.getElementById("activity");
+    const seasonInput = document.getElementById("season");
+    const experienceInput = document.getElementById("experience");
 
     function escapeHtml(text) {
       const div = document.createElement("div");
@@ -201,7 +205,7 @@
     }
 
     function makeList(items) {
-      if (!items.length) {
+      if (!items || !items.length) {
         return "<li>None provided.</li>";
       }
 
@@ -210,17 +214,23 @@
       }).join("");
     }
 
-    function getTripRequestFromForm() {
-      const destination = document.getElementById("destination").value.trim();
-      const activity = document.getElementById("activity").value.trim();
-      const season = document.getElementById("season").value;
-      const experience = document.getElementById("experience").value;
+    function makeDetail(label, value) {
+      return `<p><strong>${label}:</strong> ${escapeHtml(value)}</p>`;
+    }
 
+    function makeSection(title, items) {
+      return `
+        <h3>${title}</h3>
+        <ul>${makeList(items)}</ul>
+      `;
+    }
+
+    function getTripRequestFromForm() {
       return {
-        destination: destination,
-        activity: activity,
-        season: season,
-        experience_level: experience
+        destination: destinationInput.value.trim(),
+        activity: activityInput.value.trim(),
+        season: seasonInput.value,
+        experience_level: experienceInput.value,
       };
     }
 
@@ -240,24 +250,14 @@
     }
 
     function showTripRecommendation(trip) {
-      const itinerary = makeList(trip.itinerary || []);
-      const packingList = makeList(trip.packing_list || []);
-      const safetyTips = makeList(trip.safety_tips || []);
-
       output.innerHTML = `
         <h2>Your Trip to ${escapeHtml(trip.destination)}</h2>
-        <p><strong>Activity:</strong> ${escapeHtml(trip.activity)}</p>
-        <p><strong>Season:</strong> ${escapeHtml(trip.season)}</p>
-        <p><strong>Experience level:</strong> ${escapeHtml(trip.experience_level)}</p>
-
-        <h3>Itinerary</h3>
-        <ul>${itinerary}</ul>
-
-        <h3>Packing List</h3>
-        <ul>${packingList}</ul>
-
-        <h3>Safety Tips</h3>
-        <ul>${safetyTips}</ul>
+        ${makeDetail("Activity", trip.activity)}
+        ${makeDetail("Season", trip.season)}
+        ${makeDetail("Experience level", trip.experience_level)}
+        ${makeSection("Itinerary", trip.itinerary)}
+        ${makeSection("Packing List", trip.packing_list)}
+        ${makeSection("Safety Tips", trip.safety_tips)}
       `;
     }
 
@@ -277,15 +277,12 @@
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(function () {
-            return {};
-          });
-
-          throw new Error(errorData.detail || "Could not generate a trip.");
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || "Could not generate a trip. Please try again.");
         }
 
-        const tripRecommendation = await response.json();
-        showTripRecommendation(tripRecommendation);
+        const responseData = await response.json();
+        showTripRecommendation(responseData);
       } catch (error) {
         const message = error instanceof TypeError
           ? "Could not reach the server. Check your connection and try again."
